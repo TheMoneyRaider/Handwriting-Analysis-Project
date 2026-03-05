@@ -74,11 +74,10 @@ def collate_fn(batch):
 # TRANSFORM
 # =========================
 transform = transforms.Compose([
-    transforms.Resize((64, 1024)),  # taller + wide
+    transforms.Resize(64),
     transforms.ToTensor(),
     transforms.Normalize((0.5,), (0.5,))
 ])
-
 # =========================
 # CHARACTER MAPS
 # =========================
@@ -88,7 +87,8 @@ idx_to_char = {i: c for c, i in char_to_idx.items()}
 blank_label = 0
 
 def encode_label(text):
-    return torch.tensor([char_to_idx[c] for c in text if c in char_to_idx])
+    encoded = [char_to_idx[c] for c in text if c in char_to_idx]
+    return torch.tensor(encoded, dtype=torch.long)
 
 # =========================
 # CRNN MODEL
@@ -155,20 +155,28 @@ def main():
 
     # Dataset + Dataloaders
     dataset = IAMLinesDataset(lines_root, xml_root, transform=transform)
+
+    # -------------------------
+    # USE ONLY 1/8 OF DATASET
+    # -------------------------
+    subset_size = len(dataset) // 8
+    dataset, _ = random_split(dataset, [subset_size, len(dataset) - subset_size])
+
+    # Train/Test split
     train_size = int(0.8 * len(dataset))
     test_size = len(dataset) - train_size
     train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
 
-    trainloader = DataLoader(train_dataset, batch_size=64, shuffle=True,
+    trainloader = DataLoader(train_dataset, batch_size=32, shuffle=True,
                              num_workers=0, collate_fn=collate_fn)
-    testloader = DataLoader(test_dataset, batch_size=64, shuffle=False,
+    testloader = DataLoader(test_dataset, batch_size=32, shuffle=False,
                             num_workers=0, collate_fn=collate_fn)
 
     # Model
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = CRNN(num_classes=len(characters)+1).to(device)
     criterion = nn.CTCLoss(blank=blank_label)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = torch.optim.Adam(model.parameters(), lr=3e-4)
     num_epochs = 25
 
     wandb.login(key="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")
@@ -189,10 +197,10 @@ def main():
         for images, labels in trainloader:
             images = images.to(device)
             targets = [encode_label(label) for label in labels]
-            target_lengths = torch.tensor([len(t) for t in targets])
+            target_lengths = torch.tensor([t.numel() for t in targets], dtype=torch.long).to(device)
             targets = torch.cat(targets).to(device)
             outputs = model(images).log_softmax(2)
-            input_lengths = torch.full((outputs.size(0),), outputs.size(1), dtype=torch.long)
+            input_lengths = torch.full((outputs.size(0),),outputs.size(1),dtype=torch.long).to(device)
             loss = criterion(outputs.permute(1,0,2), targets, input_lengths, target_lengths)
             optimizer.zero_grad()
             loss.backward()
@@ -209,20 +217,23 @@ def main():
             for images, labels in testloader:
                 images = images.to(device)
                 targets = [encode_label(label) for label in labels]
-                target_lengths = torch.tensor([len(t) for t in targets])
+                target_lengths = torch.tensor([t.numel() for t in targets], dtype=torch.long).to(device)
                 targets = torch.cat(targets).to(device)
                 outputs = model(images).log_softmax(2)
-                input_lengths = torch.full((outputs.size(0),), outputs.size(1), dtype=torch.long)
+                input_lengths = torch.full((outputs.size(0),),outputs.size(1),dtype=torch.long).to(device)
                 loss = criterion(outputs.permute(1,0,2), targets, input_lengths, target_lengths)
                 val_loss_total += loss.item()
                 all_preds.extend(ctc_greedy_decode(outputs))
                 all_labels.extend(labels)
         epoch_val_loss = val_loss_total / len(testloader)
         cer = compute_cer(all_preds, all_labels)
-
+        if epoch % 1 == 0:
+            for i in range(3):
+                print("GT :", all_labels[i])
+                print("PR :", all_preds[i])
+        print("Unique preds:", torch.unique(torch.argmax(outputs,2)))
         print(f"Epoch [{epoch+1}/{num_epochs}] Train Loss: {epoch_train_loss:.4f} | Val Loss: {epoch_val_loss:.4f} | CER: {cer:.4f}")
-        wandb.log({"epoch": epoch+1, "train_loss": epoch_train_loss,
-                   "val_loss": epoch_val_loss, "CER": cer})
+        wandb.log({"train_loss": epoch_train_loss, "val_loss": epoch_val_loss, "CER": cer})
 
 if __name__ == "__main__":
     main()
