@@ -17,6 +17,7 @@ WANDB_RECORDING = True
 SAVE_MODEL = True
 # REDUCED_DATASET = True
 USES_HPC = False
+SCHEDULAR = True
 
 #work for sunday - split this into a train function, an evaluate function, and a load data function
 def main():
@@ -24,8 +25,11 @@ def main():
     if USES_HPC: # hpc doesn't like having batch sizes above 16
         batch_size = 8
     else:
-        batch_size = 32
-    lr = 3e-4
+        batch_size = 16
+    if SCHEDULAR:
+        lr = 1e-4
+    else:
+        lr = 3e-4
     num_epochs = 20
 
     # Dataset + Dataloaders
@@ -60,7 +64,14 @@ def main():
     model = CRNN(num_classes=len(characters)+1).to(device)
     criterion = nn.CTCLoss(blank=blank_label, zero_infinity=True)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-
+    
+    if SCHEDULAR:
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer,
+            mode="min",
+            factor=0.5,
+            patience=2
+        )
     print("loaded model")
 
     if WANDB_RECORDING:
@@ -125,6 +136,8 @@ def main():
                 all_labels.extend(labels)
         epoch_val_loss = val_loss_total / len(testloader)
         cer = compute_cer(all_preds, all_labels)
+        if SCHEDULAR:
+            scheduler.step(epoch_val_loss)
         if epoch % 1 == 0:
             for i in range(3):
                 print("GT :", all_labels[i])
