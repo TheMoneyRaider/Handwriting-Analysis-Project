@@ -3,6 +3,9 @@ import torch
 import torch.nn as nn
 import editdistance
 
+# File Imports
+from dataset import *
+
 # =========================
 # CRNN MODEL
 # =========================

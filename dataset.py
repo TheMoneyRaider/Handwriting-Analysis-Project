@@ -10,8 +10,8 @@ import xml.etree.ElementTree as ET
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
-if __name__ == "__main__":
-    print(dir_path)
+lines_root = dir_path + "/lines"
+xml_root = dir_path + "/xml"
 
 
 
@@ -19,7 +19,7 @@ if __name__ == "__main__":
 # DATASET
 # =========================
 class IAMLinesDataset(Dataset):
-    def __init__(self, lines_root, xml_root, transform=None):
+    def __init__(self, transform=None):
         self.lines_root = lines_root
         self.xml_root = xml_root
         self.transform = transform
@@ -76,14 +76,14 @@ def collate_fn(batch):
 # TRANSFORM
 # =========================
 transform = transforms.Compose([
-    transforms.Resize(64),
+    transforms.Resize(64), # builtin resize makes shorter side 64, may cause issues if dataset contains "lines" that a single character long, otherwise should be fine
     transforms.ToTensor(),
     transforms.Normalize((0.5,), (0.5,))
 ])
 # =========================
 # CHARACTER MAPS
 # =========================
-characters = string.ascii_letters + string.digits + string.punctuation + " "
+characters = string.ascii_letters + string.digits + string.punctuation + " " # IAMS doesn't contain all punctuation, so this covers more characters than needed, but should still be fine
 char_to_idx = {c: i+1 for i, c in enumerate(characters)}
 idx_to_char = {i: c for c, i in char_to_idx.items()}
 blank_label = 0
