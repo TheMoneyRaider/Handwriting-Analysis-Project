@@ -13,11 +13,7 @@ from dataset import *
 from model import *
 
 # Meta things
-WANDB_RECORDING = True
-SAVE_MODEL = True
-# REDUCED_DATASET = True
-USES_HPC = False
-SCHEDULAR = True
+from meta_config import *
 
 #work for sunday - split this into a train function, an evaluate function, and a load data function
 def main():
