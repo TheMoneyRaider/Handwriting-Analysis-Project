@@ -6,22 +6,22 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, random_split
 import wandb
-import time
+import datetime
 
 # File Imports
 from dataset import *
 from model import *
 
+# Meta things
 WANDB_RECORDING = True
+SAVE_MODEL = True
 
-# =========================
-# MAIN FUNCTION
-# =========================
+#work for sunday - split this into a train function, an evaluate function, and a load data function
 def main():
     # Hyperparameters
-    batch_size = 32
+    batch_size = 8 # hpc doesn't like having batch sizes above 16
     lr = 3e-4
-    num_epochs = 15 # note, I made epochs use full dataset again, so I reduced the amount of epochs for testing
+    num_epochs = 20 # note, I made epochs use full dataset again, so be wary of runtimes
 
     # Dataset + Dataloaders
     dataset = IAMLinesDataset(transform=transform)
@@ -44,7 +44,7 @@ def main():
                             num_workers=0, collate_fn=collate_fn)
 
     num_batches = len(trainloader)
-    datapoints_per_epoch = 8
+    datapoints_per_epoch = 10 # doesn't actually impact wandb recording, only meant to determine how many (persistient) printouts we have between epochs
     epoch_interval = num_batches // datapoints_per_epoch
 
     print(f"{epoch_interval} batches per data entry")
@@ -67,15 +67,14 @@ def main():
         wandb.watch(model, log="all", log_freq=100)
 
     # Training loop
-    start_time = time.time()
+    start_time = datetime.datetime.now()
     for epoch in range(num_epochs):
         model.train()
         train_loss_total = 0
         prev_total = 0
         for i, (images, labels) in enumerate(trainloader):
-            cur_time = time.time()
+            cur_time = datetime.datetime.now()
             runtime = cur_time - start_time
-            print(f"batch {i+1:03} of epoch {epoch+1:02}, current runtime: {runtime:.4f} seconds", end='\r')
             images = images.to(device)
             targets = [encode_label(label) for label in labels]
             target_lengths = torch.tensor([t.numel() for t in targets], dtype=torch.long).to(device)
@@ -91,10 +90,13 @@ def main():
 
             train_loss_total += loss.item()
 
+
             if (i + 1) % epoch_interval == 0:
                 interval_train_loss = (train_loss_total - prev_total) / epoch_interval
-                print(f'Epoch [{epoch+1}/{num_epochs}] Mini-batch [{i+1}/{num_batches}] Train Loss: {interval_train_loss:.4f}')
+                print(f'Epoch [{epoch+1}/{num_epochs}] Batch [{i+1}/{num_batches}] Train Loss: {interval_train_loss:.4f} Elapsed Time: {runtime}')
                 prev_total = train_loss_total
+            else:
+                print(f'Epoch [{epoch+1}/{num_epochs}] Batch [{i+1}/{num_batches}] Train Loss: {loss.item():.4f} Elapsed Time: {runtime}', end='\r')
 
         epoch_train_loss = train_loss_total / num_batches
 
@@ -124,6 +126,15 @@ def main():
         print(f"Epoch [{epoch+1}/{num_epochs}] Train Loss: {epoch_train_loss:.4f} | Val Loss: {epoch_val_loss:.4f} | CER: {cer:.4f}")
         if WANDB_RECORDING:
             wandb.log({"train_loss": epoch_train_loss, "val_loss": epoch_val_loss, "CER": cer})
+    
+    #cleanup
+    if WANDB_RECORDING:
+        wandb.finish()
+
+    if SAVE_MODEL:
+        save_path = f"{dir_path}/models/{MODEL_FILENAME}_{start_time}.pth"
+
+        torch.save(model.state_dict(), save_path)
 
 if __name__ == "__main__":
     main()
