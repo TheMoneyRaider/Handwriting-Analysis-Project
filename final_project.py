@@ -11,7 +11,7 @@ import wandb
 from dataset import *
 from model import *
 
-WANDB_RECORDING = False
+WANDB_RECORDING = True
 
 # =========================
 # MAIN FUNCTION

@@ -75,8 +75,17 @@ def collate_fn(batch):
 # =========================
 # TRANSFORM
 # =========================
+class ResizeHeight:
+    def __init__(self, height):
+        self.height = height
+
+    def __call__(self, img):
+        w, h = img.size
+        new_w = int(w * self.height / h)
+        return img.resize((new_w, self.height), Image.BILINEAR)
+
 transform = transforms.Compose([
-    transforms.Resize(64), # builtin resize makes shorter side 64, may cause issues if dataset contains "lines" that a single character long, otherwise should be fine
+    ResizeHeight(64), # builtin resize makes shorter side 64, may cause issues if dataset contains "lines" that are just a single character long, otherwise should be fine
     transforms.ToTensor(),
     transforms.Normalize((0.5,), (0.5,))
 ])
