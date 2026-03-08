@@ -1,7 +1,7 @@
 # Package imports
 import torch
 import torch.nn as nn
-import editdistance
+from rapidfuzz.distance import Levenshtein
 
 # File Imports
 from dataset import *
@@ -80,7 +80,7 @@ def compute_cer(predictions, ground_truths):
     total_chars = 0
     
     for pred, gt in zip(predictions, ground_truths):
-        total_distance += editdistance.eval(pred, gt)
+        total_distance += Levenshtein.distance(pred, gt)
         total_chars += len(gt)
     
     return total_distance / total_chars if total_chars > 0 else 0

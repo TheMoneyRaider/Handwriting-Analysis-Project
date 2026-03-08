@@ -19,7 +19,7 @@ WANDB_RECORDING = True
 # =========================
 def main():
     # Hyperparameters
-    batch_size = 32
+    batch_size = 8 # hpc doesn't like having batch sizes above 16
     lr = 3e-4
     num_epochs = 15 # note, I made epochs use full dataset again, so I reduced the amount of epochs for testing
 
