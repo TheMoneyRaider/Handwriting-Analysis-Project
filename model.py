@@ -6,6 +6,8 @@ from rapidfuzz.distance import Levenshtein
 # File Imports
 from dataset import *
 
+MODEL_FILENAME = "CNN_BiLSTM_W_CTC"
+
 # CNN Feature Extractor
 
 class CNNFeatureExtractor(nn.Module):

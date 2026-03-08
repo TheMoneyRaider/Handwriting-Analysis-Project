@@ -12,14 +12,16 @@ import datetime
 from dataset import *
 from model import *
 
-WANDB_RECORDING = False
+# Meta things
+WANDB_RECORDING = True
+SAVE_MODEL = True
 
 #work for sunday - split this into a train function, an evaluate function, and a load data function
 def main():
     # Hyperparameters
     batch_size = 8 # hpc doesn't like having batch sizes above 16
     lr = 3e-4
-    num_epochs = 25 # note, I made epochs use full dataset again, so be wary of runtimes
+    num_epochs = 20 # note, I made epochs use full dataset again, so be wary of runtimes
 
     # Dataset + Dataloaders
     dataset = IAMLinesDataset(transform=transform)
@@ -128,6 +130,11 @@ def main():
     #cleanup
     if WANDB_RECORDING:
         wandb.finish()
+
+    if SAVE_MODEL:
+        save_path = f"{dir_path}/models/{MODEL_FILENAME}_{start_time}.pth"
+
+        torch.save(model.state_dict(), save_path)
 
 if __name__ == "__main__":
     main()
