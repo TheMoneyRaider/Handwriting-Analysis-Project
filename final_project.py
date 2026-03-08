@@ -15,17 +15,24 @@ from model import *
 # Meta things
 WANDB_RECORDING = True
 SAVE_MODEL = True
+# REDUCED_DATASET = True
+USES_HPC = False
 
 #work for sunday - split this into a train function, an evaluate function, and a load data function
 def main():
     # Hyperparameters
-    batch_size = 8 # hpc doesn't like having batch sizes above 16
+    if USES_HPC: # hpc doesn't like having batch sizes above 16
+        batch_size = 8
+    else:
+        batch_size = 32
     lr = 3e-4
-    num_epochs = 20 # note, I made epochs use full dataset again, so be wary of runtimes
+    num_epochs = 20
 
     # Dataset + Dataloaders
     dataset = IAMLinesDataset(transform=transform)
-
+    # if REDUCED_DATASET:
+    #     subset_size = len(dataset) // 4
+    #     dataset, _ = random_split(dataset, [subset_size, len(dataset) - subset_size])
     print("Loaded dataset")
 
     # Check if cuda speedup is available
@@ -57,7 +64,7 @@ def main():
     print("loaded model")
 
     if WANDB_RECORDING:
-        wandb.init(project="handwriting-analysis-IAM", config={ # lookup how to setup a .netrc file for login information, I deleted your key because I wanted to have my tests on my acc so I could see them instead of having to ask you
+        wandb.init(project="handwriting-analysis-IAM", config={
             "epochs": num_epochs,
             "batch_size": batch_size,
             "learning_rate": lr,
