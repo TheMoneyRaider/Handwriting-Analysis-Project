@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, random_split
 import wandb
+import time
 
 # File Imports
 from dataset import *
@@ -46,6 +47,8 @@ def main():
     datapoints_per_epoch = 8
     epoch_interval = num_batches // datapoints_per_epoch
 
+    print(f"{epoch_interval} batches per data entry")
+
     # Model
     model = CRNN(num_classes=len(characters)+1).to(device)
     criterion = nn.CTCLoss(blank=blank_label, zero_infinity=True)
@@ -64,11 +67,15 @@ def main():
         wandb.watch(model, log="all", log_freq=100)
 
     # Training loop
+    start_time = time.time()
     for epoch in range(num_epochs):
         model.train()
         train_loss_total = 0
         prev_total = 0
         for i, (images, labels) in enumerate(trainloader):
+            cur_time = time.time()
+            runtime = cur_time - start_time
+            print(f"batch {i+1:03} of epoch {epoch+1:02}, current runtime: {runtime:.4f} seconds", end='\r')
             images = images.to(device)
             targets = [encode_label(label) for label in labels]
             target_lengths = torch.tensor([t.numel() for t in targets], dtype=torch.long).to(device)
@@ -84,7 +91,7 @@ def main():
 
             train_loss_total += loss.item()
 
-            if i + 1 % epoch_interval == 0:
+            if (i + 1) % epoch_interval == 0:
                 interval_train_loss = (train_loss_total - prev_total) / epoch_interval
                 print(f'Epoch [{epoch+1}/{num_epochs}] Mini-batch [{i+1}/{num_batches}] Train Loss: {interval_train_loss:.4f}')
                 prev_total = train_loss_total
