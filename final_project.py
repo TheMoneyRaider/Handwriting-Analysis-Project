@@ -11,6 +11,8 @@ import datetime
 # File Imports
 from dataset import *
 from model import *
+if BIGRAM:
+    from bigram import *
 
 # Meta things
 from meta_config import *
@@ -23,7 +25,7 @@ def main():
     else:
         batch_size = 16
     lr = 3e-4
-    num_epochs = 20
+    num_epochs = 25
 
     # Dataset + Dataloaders
     dataset = IAMLinesDataset(transform=transform)
@@ -49,10 +51,15 @@ def main():
     epoch_interval = (num_batches // datapoints_per_epoch) + 1 # lazy round up so there's never an excess record
 
     # Model
-    model = CRNN(num_classes=len(characters)+1).to(device)
+    if PAIRS:
+        model = CRNN(num_classes=len(tokens)+1).to(device)
+    else:
+        model = CRNN(num_classes=len(characters)+1).to(device)
     criterion = nn.CTCLoss(blank=blank_label, zero_infinity=True)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     
+    if BIGRAM:
+        bigram_lm = build_bigram_lm(dataset)
     if SCHEDULAR:
         scheduler = torch.optim.lr_scheduler.StepLR(
             optimizer,
@@ -121,7 +128,10 @@ def main():
                 input_lengths = torch.full((outputs.size(0),),outputs.size(1),dtype=torch.long).to(device)
                 loss = criterion(outputs.permute(1,0,2), targets, input_lengths, target_lengths)
                 val_loss_total += loss.item()
-                preds = ctc_greedy_decode(outputs)
+                if BIGRAM:
+                    preds = ctc_bigram_decode(outputs, bigram_lm)
+                else:
+                    preds = ctc_greedy_decode(outputs)
                 all_preds.extend(preds)
                 all_labels.extend(labels)
 

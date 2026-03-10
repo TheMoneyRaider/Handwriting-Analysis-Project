@@ -8,6 +8,7 @@ from torchvision import transforms
 from PIL import Image
 import xml.etree.ElementTree as ET
 from meta_config import *
+import itertools
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
@@ -97,13 +98,47 @@ transform = transforms.Compose([
 # CHARACTER MAPS
 # ========================= # IAMS doesn't contain all punctuation, so this covers more characters than needed, but should still be fine
 if LOWERCASE:
-    characters = string.ascii_lowercase + string.digits + string.punctuation + " "
+    letters = string.ascii_lowercase
+    characters = letters + string.digits + string.punctuation + " "
 else:
-    characters = string.ascii_letters + string.digits + string.punctuation + " "
-char_to_idx = {c: i+1 for i, c in enumerate(characters)}
+    letters = string.ascii_letters
+    characters = letters + string.digits + string.punctuation + " "
+
+if PAIRS:
+    # Only build pairs from letters
+    char_pairs = [''.join(p) for p in itertools.product(letters, repeat=2)]
+
+    # Full vocabulary
+    tokens = list(characters) + char_pairs
+
+    # Mappings
+    char_to_idx = {c: i+1 for i, c in enumerate(tokens)}
+else:
+    char_to_idx = {c: i+1 for i, c in enumerate(characters)}
+
 idx_to_char = {i: c for c, i in char_to_idx.items()}
 blank_label = 0
 
 def encode_label(text):
-    encoded = [char_to_idx[c] for c in text if c in char_to_idx]
+    if not PAIRS:
+        encoded = [char_to_idx[c] for c in text if c in char_to_idx]
+    else:
+        encoded = []
+        i = 0
+
+        while i < len(text):
+            # Only attempt pair if both characters are letters
+            if i < len(text) - 1 and text[i] in letters and text[i+1] in letters:
+                pair = text[i:i+2]
+                if pair in char_to_idx:
+                    encoded.append(char_to_idx[pair])
+                    i += 2
+                    continue
+
+            # Fallback to single character
+            c = text[i]
+            if c in char_to_idx:
+                encoded.append(char_to_idx[c])
+            i += 1
+
     return torch.tensor(encoded, dtype=torch.long)

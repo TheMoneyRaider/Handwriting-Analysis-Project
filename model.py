@@ -2,9 +2,11 @@
 import torch
 import torch.nn as nn
 from rapidfuzz.distance import Levenshtein
+import math
 
 # File Imports
 from dataset import *
+from meta_config import *
 
 MODEL_FILENAME = "CNN_BiLSTM_W_CTC"
 
@@ -13,14 +15,24 @@ MODEL_FILENAME = "CNN_BiLSTM_W_CTC"
 class CNNFeatureExtractor(nn.Module):
     def __init__(self):
         super().__init__()
-        self.cnn = nn.Sequential(
-            nn.Conv2d(1, 64, 3, 1, 1), nn.BatchNorm2d(64), nn.ReLU(), nn.MaxPool2d(2,2),
-            nn.Conv2d(64, 128, 3, 1, 1), nn.BatchNorm2d(128), nn.ReLU(), nn.MaxPool2d(2,2),
-            nn.Conv2d(128, 256, 3, 1, 1), nn.BatchNorm2d(256), nn.ReLU(),
-            nn.Conv2d(256, 256, 3, 1, 1), nn.BatchNorm2d(256), nn.ReLU(), nn.MaxPool2d((2,1)),
-            nn.Conv2d(256, 512, 3, 1, 1), nn.BatchNorm2d(512), nn.ReLU(),
-            nn.Conv2d(512, 512, 3, 1, 1), nn.BatchNorm2d(512), nn.ReLU(), nn.MaxPool2d((2,1))
-        )
+        if CHARACTER_SEPERATION:
+            self.cnn = nn.Sequential(
+                nn.Conv2d(1, 64, 3, 1, 1), nn.BatchNorm2d(64), nn.ReLU(), nn.MaxPool2d(2,2),
+                nn.Conv2d(64, 128, 3, 1, 1), nn.BatchNorm2d(128), nn.ReLU(), nn.MaxPool2d((2,1)),
+                nn.Conv2d(128, 256, 3, 1, 1), nn.BatchNorm2d(256), nn.ReLU(),
+                nn.Conv2d(256, 256, 3, 1, 1), nn.BatchNorm2d(256), nn.ReLU(), nn.MaxPool2d((2,1)),
+                nn.Conv2d(256, 512, 3, 1, 1), nn.BatchNorm2d(512), nn.ReLU(),
+                nn.Conv2d(512, 512, 3, 1, 1), nn.BatchNorm2d(512), nn.ReLU(), nn.MaxPool2d((2,1))
+            )
+        else:
+            self.cnn = nn.Sequential(
+                nn.Conv2d(1, 64, 3, 1, 1), nn.BatchNorm2d(64), nn.ReLU(), nn.MaxPool2d(2,2),
+                nn.Conv2d(64, 128, 3, 1, 1), nn.BatchNorm2d(128), nn.ReLU(), nn.MaxPool2d(2,2),
+                nn.Conv2d(128, 256, 3, 1, 1), nn.BatchNorm2d(256), nn.ReLU(),
+                nn.Conv2d(256, 256, 3, 1, 1), nn.BatchNorm2d(256), nn.ReLU(), nn.MaxPool2d((2,1)),
+                nn.Conv2d(256, 512, 3, 1, 1), nn.BatchNorm2d(512), nn.ReLU(),
+                nn.Conv2d(512, 512, 3, 1, 1), nn.BatchNorm2d(512), nn.ReLU(), nn.MaxPool2d((2,1))
+            )
 
     def forward(self, x):
         return self.cnn(x)  # [B, C, H, W]
@@ -33,15 +45,23 @@ class CRNN(nn.Module):
     def __init__(self, num_classes):
         super().__init__()
         self.cnn = CNNFeatureExtractor()
-        
-        self.rnn = nn.LSTM(
-            input_size=256*8,
-            hidden_size=256,
-            num_layers=2,
-            bidirectional=True,
-            batch_first=True
-        )
-
+        if LSTM_DROPOUT:
+            self.rnn = nn.LSTM(
+                input_size=256*8,
+                hidden_size=256,
+                num_layers=2,
+                bidirectional=True,
+                batch_first=True
+            )
+        else:
+            self.rnn = nn.LSTM(
+                input_size=256*8,
+                hidden_size=256,
+                num_layers=2,
+                bidirectional=True,
+                batch_first=True,
+                dropout=0.3
+            )
 
         self.fc = nn.Linear(512, num_classes)
 
@@ -87,7 +107,42 @@ def compute_cer(predictions, ground_truths):
     
     return total_distance / total_chars if total_chars > 0 else 0
 
+def ctc_bigram_decode(output, bigram_lm, blank=0, lm_weight=0.3):
 
+    log_probs = output.log_softmax(2)
+    preds = torch.argmax(log_probs, dim=2)
+
+    decoded = []
+
+    for b, pred in enumerate(preds):
+
+        prev = "<s>"
+        prev_ctc = blank
+        string = []
+
+        for t, p in enumerate(pred):
+
+            p = p.item()
+
+            if p == blank or p == prev_ctc:
+                prev_ctc = p
+                continue
+
+            char = idx_to_char.get(p, "")
+
+            lm_bonus = 0
+            if prev in bigram_lm and char in bigram_lm[prev]:
+                lm_bonus = bigram_lm[prev][char]
+
+            score = log_probs[b, t, p].item() + lm_weight * lm_bonus
+
+            string.append(char)
+            prev = char
+            prev_ctc = p
+
+        decoded.append("".join(string))
+
+    return decoded
 
 
 

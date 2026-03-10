@@ -4,3 +4,9 @@ SAVE_MODEL = True
 USES_HPC = False
 SCHEDULAR = True
 LOWERCASE = True
+PAIRS = True
+BIGRAM = True #Bigram is incmpatable with Pairs
+if BIGRAM:
+    PAIRS = False
+CHARACTER_SEPERATION = True
+LSTM_DROPOUT = True
