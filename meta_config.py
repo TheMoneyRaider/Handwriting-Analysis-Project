@@ -1,7 +1,9 @@
 # git will not automatically track this file
+# git will not automatically track this file
+from uses_hpc import USES_HPC
+
 WANDB_RECORDING = True
 SAVE_MODEL = True
-USES_HPC = False
 SCHEDULAR = True
 LOWERCASE = True
 PAIRS = True
