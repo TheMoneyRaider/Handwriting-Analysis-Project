@@ -23,13 +23,10 @@ def main():
     else:
         batch_size = 16
     lr = 3e-4
-    num_epochs = 15
+    num_epochs = 20
 
     # Dataset + Dataloaders
     dataset = IAMLinesDataset(transform=transform)
-    # if REDUCED_DATASET:
-    #     subset_size = len(dataset) // 4
-    #     dataset, _ = random_split(dataset, [subset_size, len(dataset) - subset_size])
     print("Loaded dataset")
 
     # Check if cuda speedup is available

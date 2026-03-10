@@ -7,6 +7,7 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 from PIL import Image
 import xml.etree.ElementTree as ET
+from meta_config import *
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
@@ -37,7 +38,10 @@ class IAMLinesDataset(Dataset):
 
             for line in root.iter("line"):
                 line_id = line.attrib["id"]
-                text = line.attrib["text"]
+                if LOWERCASE:
+                    text = line.attrib["text"].lower()
+                else:
+                    text = line.attrib["text"]
 
                 folder1 = line_id.split("-")[0]
                 folder2 = "-".join(line_id.split("-")[:2])
@@ -91,8 +95,11 @@ transform = transforms.Compose([
 ])
 # =========================
 # CHARACTER MAPS
-# =========================
-characters = string.ascii_letters + string.digits + string.punctuation + " " # IAMS doesn't contain all punctuation, so this covers more characters than needed, but should still be fine
+# ========================= # IAMS doesn't contain all punctuation, so this covers more characters than needed, but should still be fine
+if LOWERCASE:
+    characters = string.ascii_lowercase + string.digits + string.punctuation + " "
+else:
+    characters = string.ascii_letters + string.digits + string.punctuation + " "
 char_to_idx = {c: i+1 for i, c in enumerate(characters)}
 idx_to_char = {i: c for c, i in char_to_idx.items()}
 blank_label = 0
