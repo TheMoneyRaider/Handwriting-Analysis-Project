@@ -1,6 +1,6 @@
 # git will not automatically track this file
-WANDB_RECORDING = False
+WANDB_RECORDING = True
 SAVE_MODEL = True
 # REDUCED_DATASET = True
-USES_HPC = True
+USES_HPC = False
 SCHEDULAR = True

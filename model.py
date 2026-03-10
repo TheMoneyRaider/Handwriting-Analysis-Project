@@ -86,3 +86,9 @@ def compute_cer(predictions, ground_truths):
         total_chars += len(gt)
     
     return total_distance / total_chars if total_chars > 0 else 0
+
+
+
+
+
+

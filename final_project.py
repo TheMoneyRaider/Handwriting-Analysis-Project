@@ -22,10 +22,7 @@ def main():
         batch_size = 8
     else:
         batch_size = 16
-    if SCHEDULAR:
-        lr = 1e-4
-    else:
-        lr = 3e-4
+    lr = 3e-4
     num_epochs = 15
 
     # Dataset + Dataloaders
@@ -60,11 +57,10 @@ def main():
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     
     if SCHEDULAR:
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        scheduler = torch.optim.lr_scheduler.StepLR(
             optimizer,
-            mode="min",
-            factor=0.5,
-            patience=2
+            step_size=5,
+            gamma=0.5
         )
 
     print("loaded model")
@@ -143,7 +139,7 @@ def main():
         cer = compute_cer(all_preds, all_labels)
         
         if SCHEDULAR:
-            scheduler.step(epoch_val_loss)
+            scheduler.step()
 
         if not WANDB_RECORDING:
             for i in range(3):
