@@ -2,13 +2,22 @@
 import torch
 import torch.nn as nn
 from rapidfuzz.distance import Levenshtein
-import math
 
 # File Imports
 from dataset import *
 from meta_config import *
 
 MODEL_FILENAME = "CNN_BiLSTM_W_CTC"
+
+if BIGRAM:
+    from bigram import *
+if BEAM_SEARCH:
+    from ctcdecode import CTCBeamDecoder
+    decoder = CTCBeamDecoder(
+        list(characters),
+        beam_width=10,
+        blank_id=blank_label
+    )
 
 # CNN Feature Extractor
 
@@ -45,23 +54,22 @@ class CRNN(nn.Module):
     def __init__(self, num_classes):
         super().__init__()
         self.cnn = CNNFeatureExtractor()
+        drop = 0.0
+        input = 256*8
         if LSTM_DROPOUT:
-            self.rnn = nn.LSTM(
-                input_size=256*8,
-                hidden_size=256,
-                num_layers=2,
-                bidirectional=True,
-                batch_first=True
-            )
-        else:
-            self.rnn = nn.LSTM(
-                input_size=256*8,
-                hidden_size=256,
-                num_layers=2,
-                bidirectional=True,
-                batch_first=True,
-                dropout=0.3
-            )
+            drop = 0.3
+        if LSTM_INPUT_SIZE_MATCH:
+            input = 512*8
+        if CONV_LAYER:
+            self.reduce = nn.Conv2d(512,256,1)
+        self.rnn = nn.LSTM(
+            input_size=input,
+            hidden_size=256,
+            num_layers=2,
+            bidirectional=True,
+            batch_first=True,
+            dropout=drop
+        )
 
         self.fc = nn.Linear(512, num_classes)
 
@@ -144,6 +152,65 @@ def ctc_bigram_decode(output, bigram_lm, blank=0, lm_weight=0.3):
 
     return decoded
 
+def ctc_beam_decode(outputs):
+
+    beam_results, beam_scores, timesteps, out_lens = decoder.decode(outputs)
+
+    decoded = []
+
+    for i in range(outputs.size(0)):
+        length = out_lens[i][0]
+        tokens = beam_results[i][0][:length]
+
+        text = "".join([idx_to_char[t.item()] for t in tokens if t.item() != blank_label])
+
+        decoded.append(text)
+
+    return decoded
 
 
+def ctc_beam_bigram_decode(outputs, bigram_lm, beam_width=10, blank=0, lm_weight=0.3):
 
+    log_probs = outputs.log_softmax(2)
+    batch_size, T, C = log_probs.shape
+
+    decoded = []
+
+    for b in range(batch_size):
+
+        beam = [("", blank, 0.0)]  
+        # (string, previous_token, score)
+
+        for t in range(T):
+
+            new_beam = []
+
+            for seq, prev_token, score in beam:
+
+                for c in range(C):
+
+                    logp = log_probs[b, t, c].item()
+
+                    if c == blank:
+                        new_beam.append((seq, blank, score + logp))
+                        continue
+
+                    if c == prev_token:
+                        new_seq = seq
+                    else:
+                        char = idx_to_char.get(c, "")
+                        new_seq = seq + char
+
+                    lm_bonus = lm_weight * bigram_score(new_seq, bigram_lm)
+
+                    new_score = score + logp + lm_bonus
+
+                    new_beam.append((new_seq, c, new_score))
+
+            new_beam = sorted(new_beam, key=lambda x: x[2], reverse=True)
+            beam = new_beam[:beam_width]
+
+        best_seq = beam[0][0]
+        decoded.append(best_seq)
+
+    return decoded

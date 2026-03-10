@@ -24,3 +24,16 @@ def build_bigram_lm(dataset):
             bigram_log_probs[prev][c] = math.log(prob)
 
     return bigram_log_probs
+
+
+def bigram_score(sequence, bigram_lm):
+
+    prev = "<s>"
+    score = 0
+
+    for c in sequence:
+        if prev in bigram_lm and c in bigram_lm[prev]:
+            score += bigram_lm[prev][c]
+        prev = c
+
+    return score

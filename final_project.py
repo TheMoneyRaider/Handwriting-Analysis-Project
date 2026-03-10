@@ -129,9 +129,15 @@ def main():
                 loss = criterion(outputs.permute(1,0,2), targets, input_lengths, target_lengths)
                 val_loss_total += loss.item()
                 if BIGRAM:
-                    preds = ctc_bigram_decode(outputs, bigram_lm)
+                    if BEAM_SEARCH:
+                        preds = ctc_beam_bigram_decode(outputs, bigram_lm)
+                    else:
+                        preds = ctc_bigram_decode(outputs, bigram_lm)
                 else:
-                    preds = ctc_greedy_decode(outputs)
+                    if BEAM_SEARCH:
+                        preds = ctc_beam_decode(outputs)
+                    else:
+                        preds = ctc_greedy_decode(outputs)
                 all_preds.extend(preds)
                 all_labels.extend(labels)
 

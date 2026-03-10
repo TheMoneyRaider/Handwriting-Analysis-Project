@@ -10,5 +10,8 @@ PAIRS = True
 BIGRAM = True #Bigram is incmpatable with Pairs
 if BIGRAM:
     PAIRS = False
-CHARACTER_SEPERATION = True
+CHARACTER_SEPERATION = False
 LSTM_DROPOUT = True
+LSTM_INPUT_SIZE_MATCH = True #Test me!
+CONV_LAYER = False #Test me!
+BEAM_SEARCH = False #Test me!
