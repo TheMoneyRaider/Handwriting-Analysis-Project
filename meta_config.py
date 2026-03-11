@@ -5,13 +5,15 @@ from uses_hpc import USES_HPC
 WANDB_RECORDING = True
 SAVE_MODEL = True
 SCHEDULAR = True
-LOWERCASE = True
-PAIRS = False
-BIGRAM = True #Bigram is incmpatable with Pairs
-CHARACTER_SEPERATION = False
+LOWERCASE = False
+BIGRAM = True
 LSTM_DROPOUT = True
-BEAM_SEARCH = True
-CONV_LAYER = True
+CONFIDENCE = False
+
+BEAM_SEARCH = False
+CONV_LAYER = False
+CHARACTER_SEPERATION = False
+PAIRS = False
 
 if BIGRAM:
     PAIRS = False

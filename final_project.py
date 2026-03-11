@@ -11,6 +11,7 @@ import datetime
 # File Imports
 from dataset import *
 from model import *
+from confidence_corrector import *
 if BIGRAM:
     from bigram import *
 
@@ -141,7 +142,23 @@ def main():
                     preds = ctc_beam_decode(outputs, decoder)
                 else:
                     preds = ctc_greedy_decode(outputs)
-                all_preds.extend(preds)
+
+                if CONFIDENCE:
+                    conf = char_confidence(outputs)
+
+                    corrected_preds = []
+
+                    for i, p in enumerate(preds):
+
+                        p = confidence_correct(p, conf[i])
+
+                        p = spell_correct_sentence(p)
+
+                        corrected_preds.append(p)
+
+                    all_preds.extend(corrected_preds)
+                else:
+                    all_preds.extend(preds)
                 all_labels.extend(labels)
 
                 if WANDB_RECORDING and logged_images is None:

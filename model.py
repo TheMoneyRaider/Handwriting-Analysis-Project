@@ -77,6 +77,14 @@ class CRNN(nn.Module):
 
         return output
 
+
+def char_confidence(output):
+
+    probs = torch.softmax(output, dim=2)
+    max_probs, _ = probs.max(dim=2)
+
+    return max_probs
+
 # =========================
 # CTC DECODING
 # =========================

@@ -100,10 +100,9 @@ transform = transforms.Compose([
 # ========================= # IAMS doesn't contain all punctuation, so this covers more characters than needed, but should still be fine
 if LOWERCASE:
     letters = string.ascii_lowercase
-    characters = letters + string.digits + string.punctuation + " "
 else:
     letters = string.ascii_letters
-    characters = letters + string.digits + string.punctuation + " "
+characters = letters + string.digits + string.punctuation + " "
 
 if PAIRS:
     char_pairs = [''.join(p) for p in itertools.product(letters, repeat=2)]
