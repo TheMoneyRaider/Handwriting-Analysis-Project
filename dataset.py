@@ -8,6 +8,7 @@ from torchvision import transforms
 from PIL import Image
 import xml.etree.ElementTree as ET
 from meta_config import *
+from bigram import *
 import itertools
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -105,19 +106,17 @@ else:
     characters = letters + string.digits + string.punctuation + " "
 
 if PAIRS:
-    # Only build pairs from letters
     char_pairs = [''.join(p) for p in itertools.product(letters, repeat=2)]
-
-    # Full vocabulary
     tokens = list(characters) + char_pairs
-
-    # Mappings
-    char_to_idx = {c: i+1 for i, c in enumerate(tokens)}
 else:
-    char_to_idx = {c: i+1 for i, c in enumerate(characters)}
+    tokens = list(characters)
 
+
+char_to_idx = {c: i+1 for i, c in enumerate(tokens)}
 idx_to_char = {i: c for c, i in char_to_idx.items()}
 blank_label = 0
+
+
 
 def encode_label(text):
     if not PAIRS:

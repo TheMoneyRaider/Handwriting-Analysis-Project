@@ -11,13 +11,6 @@ MODEL_FILENAME = "CNN_BiLSTM_W_CTC"
 
 if BIGRAM:
     from bigram import *
-if BEAM_SEARCH:
-    from ctcdecode import CTCBeamDecoder
-    decoder = CTCBeamDecoder(
-        list(characters),
-        beam_width=10,
-        blank_id=blank_label
-    )
 
 # CNN Feature Extractor
 
@@ -152,7 +145,7 @@ def ctc_bigram_decode(output, bigram_lm, blank=0, lm_weight=0.3):
 
     return decoded
 
-def ctc_beam_decode(outputs):
+def ctc_beam_decode(outputs,decoder):
 
     beam_results, beam_scores, timesteps, out_lens = decoder.decode(outputs)
 
@@ -168,49 +161,29 @@ def ctc_beam_decode(outputs):
 
     return decoded
 
+def ctc_beam_bigram_decode(outputs, bigram_lm, decoder, beam_width=10, lm_weight=0.3):
 
-def ctc_beam_bigram_decode(outputs, bigram_lm, beam_width=10, blank=0, lm_weight=0.3):
-
-    log_probs = outputs.log_softmax(2)
-    batch_size, T, C = log_probs.shape
-
+    log_probs = outputs.log_softmax(2).cpu().numpy()
     decoded = []
 
-    for b in range(batch_size):
+    for lp in log_probs:
+        beams = decoder.decode_beams(lp, beam_width=beam_width)
+        best_text = None
+        best_score = -float("inf")
 
-        beam = [("", blank, 0.0)]  
-        # (string, previous_token, score)
+        for beam in beams:
+            text = beam[0]
+            logit_score = beam[2]
+            if isinstance(logit_score, list):
+                logit_score = sum(logit_score)
 
-        for t in range(T):
+            lm_score = bigram_score(text, bigram_lm)
+            score = logit_score + lm_weight * lm_score
 
-            new_beam = []
+            if score > best_score:
+                best_score = score
+                best_text = text
 
-            for seq, prev_token, score in beam:
-
-                for c in range(C):
-
-                    logp = log_probs[b, t, c].item()
-
-                    if c == blank:
-                        new_beam.append((seq, blank, score + logp))
-                        continue
-
-                    if c == prev_token:
-                        new_seq = seq
-                    else:
-                        char = idx_to_char.get(c, "")
-                        new_seq = seq + char
-
-                    lm_bonus = lm_weight * bigram_score(new_seq, bigram_lm)
-
-                    new_score = score + logp + lm_bonus
-
-                    new_beam.append((new_seq, c, new_score))
-
-            new_beam = sorted(new_beam, key=lambda x: x[2], reverse=True)
-            beam = new_beam[:beam_width]
-
-        best_seq = beam[0][0]
-        decoded.append(best_seq)
+        decoded.append(best_text)
 
     return decoded

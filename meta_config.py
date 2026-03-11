@@ -6,12 +6,17 @@ WANDB_RECORDING = True
 SAVE_MODEL = True
 SCHEDULAR = True
 LOWERCASE = True
-PAIRS = True
+PAIRS = False
 BIGRAM = True #Bigram is incmpatable with Pairs
-if BIGRAM:
-    PAIRS = False
 CHARACTER_SEPERATION = False
 LSTM_DROPOUT = True
-LSTM_INPUT_SIZE_MATCH = True #Test me!
-CONV_LAYER = False #Test me!
-BEAM_SEARCH = False #Test me!
+BEAM_SEARCH = False
+CONV_LAYER = True
+LSTM_INPUT_SIZE_MATCH = True
+
+if BIGRAM:
+    PAIRS = False
+
+#Tests TODO
+#Beam no bigram
+#Beam Bigram

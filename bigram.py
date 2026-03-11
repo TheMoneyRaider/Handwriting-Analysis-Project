@@ -1,5 +1,8 @@
 from collections import defaultdict
 import math
+from meta_config import *
+import tempfile
+from pyctcdecode import build_ctcdecoder
 
 def build_bigram_lm(dataset):
 
@@ -24,6 +27,7 @@ def build_bigram_lm(dataset):
             bigram_log_probs[prev][c] = math.log(prob)
 
     return bigram_log_probs
+
 
 
 def bigram_score(sequence, bigram_lm):
