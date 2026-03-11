@@ -133,21 +133,14 @@ def main():
                 input_lengths = torch.full((outputs.size(0),),outputs.size(1),dtype=torch.long).to(device)
                 loss = criterion(outputs.permute(1,0,2), targets, input_lengths, target_lengths)
                 val_loss_total += loss.item()
-                if BIGRAM:
-                    if BEAM_SEARCH:
-                        preds = ctc_beam_bigram_decode(outputs, bigram_lm,decoder)
-                    else:
-                        preds = ctc_bigram_decode(outputs, bigram_lm)
+                if BIGRAM and BEAM_SEARCH:
+                    preds = ctc_beam_bigram_decode(outputs, bigram_lm, decoder, beam_width=10, lm_weight=0.3)
+                elif BIGRAM:
+                    preds = ctc_bigram_decode(outputs, bigram_lm)
+                elif BEAM_SEARCH:
+                    preds = ctc_beam_decode(outputs, decoder)
                 else:
-                    if BEAM_SEARCH:
-                        # Decode each item in the batch
-                        preds = []
-                        for i in range(outputs.size(0)):
-                            logits = outputs[i]  # (time, vocab)
-                            decoded_texts = ctc_beam_decode(logits, decoder)
-                            preds.extend(decoded_texts)
-                    else:
-                        preds = ctc_greedy_decode(outputs)
+                    preds = ctc_greedy_decode(outputs)
                 all_preds.extend(preds)
                 all_labels.extend(labels)
 

@@ -51,8 +51,6 @@ class CRNN(nn.Module):
         input = 256*8
         if LSTM_DROPOUT:
             drop = 0.3
-        if LSTM_INPUT_SIZE_MATCH:
-            input = 512*8
         if CONV_LAYER:
             self.reduce = nn.Conv2d(512,256,1)
         self.rnn = nn.LSTM(
@@ -162,9 +160,11 @@ def ctc_beam_decode(outputs,decoder):
     return decoded
 
 def ctc_beam_bigram_decode(outputs, bigram_lm, decoder, beam_width=10, lm_weight=0.3):
-
-    log_probs = outputs.log_softmax(2).cpu().numpy()
+    """
+    Beam decode a batch of CTC outputs using a bigram LM.
+    """
     decoded = []
+    log_probs = outputs.log_softmax(2).cpu().numpy()
 
     for lp in log_probs:
         beams = decoder.decode_beams(lp, beam_width=beam_width)
@@ -172,16 +172,14 @@ def ctc_beam_bigram_decode(outputs, bigram_lm, decoder, beam_width=10, lm_weight
         best_score = -float("inf")
 
         for beam in beams:
-            text = beam[0]
-            logit_score = beam[2]
-            if isinstance(logit_score, list):
-                logit_score = sum(logit_score)
-
+            text = beam[0]  # decoded text
+            logit_score = beam[3]  # <--- use 4th element
+            # Compute LM score
             lm_score = bigram_score(text, bigram_lm)
-            score = logit_score + lm_weight * lm_score
+            total_score = logit_score + lm_weight * lm_score
 
-            if score > best_score:
-                best_score = score
+            if total_score > best_score:
+                best_score = total_score
                 best_text = text
 
         decoded.append(best_text)

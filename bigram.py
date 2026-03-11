@@ -2,7 +2,6 @@ from collections import defaultdict
 import math
 from meta_config import *
 import tempfile
-from pyctcdecode import build_ctcdecoder
 
 def build_bigram_lm(dataset):
 
@@ -29,15 +28,11 @@ def build_bigram_lm(dataset):
     return bigram_log_probs
 
 
-
-def bigram_score(sequence, bigram_lm):
-
-    prev = "<s>"
+def bigram_score(beam_text, bigram_lm, lm_weight=1.0):
     score = 0
-
-    for c in sequence:
+    prev = "<s>"
+    for c in beam_text:
         if prev in bigram_lm and c in bigram_lm[prev]:
             score += bigram_lm[prev][c]
         prev = c
-
-    return score
+    return lm_weight * score

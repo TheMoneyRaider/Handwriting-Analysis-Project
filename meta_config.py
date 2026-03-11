@@ -10,13 +10,13 @@ PAIRS = False
 BIGRAM = True #Bigram is incmpatable with Pairs
 CHARACTER_SEPERATION = False
 LSTM_DROPOUT = True
-BEAM_SEARCH = False
+BEAM_SEARCH = True
 CONV_LAYER = True
-LSTM_INPUT_SIZE_MATCH = True
 
 if BIGRAM:
     PAIRS = False
 
 #Tests TODO
 #Beam no bigram
-#Beam Bigram
+#dropout sweep
+#actual wandb sweep
