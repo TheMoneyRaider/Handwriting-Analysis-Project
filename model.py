@@ -91,29 +91,30 @@ def char_confidence(output):
 def ctc_greedy_decode(output, blank=0):
 
     probs = torch.softmax(output, dim=2)
-    max_probs, preds = torch.max(probs, dim=2)
+    preds = torch.argmax(probs, dim=2)
 
     decoded = []
     confidences = []
 
     for b in range(preds.size(0)):
-
         prev = blank
         string = []
         char_conf = []
 
         for t in range(preds.size(1)):
-
             p = preds[b, t].item()
+            prob = probs[b, t, p].item()
 
+            # collapse repeated characters & ignore blanks
             if p != blank and p != prev:
                 string.append(idx_to_char.get(p, ""))
-                char_conf.append(max_probs[b, t].item())
+                char_conf.append(prob)  # one confidence per character
 
             prev = p
 
         decoded.append("".join(string))
-        confidences.append(torch.tensor(char_conf))
+        confidences.append(torch.tensor(char_conf))  # aligned with decoded string
+
     return decoded, confidences
 
 def compute_cer(predictions, ground_truths):
@@ -129,9 +130,11 @@ def compute_cer(predictions, ground_truths):
 
 def ctc_bigram_decode(output, bigram_lm, blank=0, lm_weight=0.3):
     """
-    CTC decoding with a simple bigram LM, returning both decoded text and per-character confidence.
+    CTC decoding with a bigram LM.
+    Returns:
+        decoded: list of strings
+        confidences: list of tensors, each aligned with decoded string
     """
-
     probs = torch.softmax(output, dim=2)
     log_probs = output.log_softmax(2)
     preds = torch.argmax(log_probs, dim=2)
@@ -140,33 +143,34 @@ def ctc_bigram_decode(output, bigram_lm, blank=0, lm_weight=0.3):
     confidences = []
 
     for b, pred in enumerate(preds):
-        prev = "<s>"
         prev_ctc = blank
+        prev_char = "<s>"
         string = []
         char_conf = []
 
         for t, p in enumerate(pred):
             p = p.item()
+            prob = probs[b, t, p].item()
 
+            # skip blanks or repeated characters
             if p == blank or p == prev_ctc:
                 prev_ctc = p
                 continue
 
             char = idx_to_char.get(p, "")
 
-            # LM bonus (optional, does not affect confidence)
+            # apply bigram LM bonus (optional, does not affect confidence alignment)
             lm_bonus = 0
-            if prev in bigram_lm and char in bigram_lm[prev]:
-                lm_bonus = bigram_lm[prev][char]
+            if prev_char in bigram_lm and char in bigram_lm[prev_char]:
+                lm_bonus = bigram_lm[prev_char][char]
 
             score = log_probs[b, t, p].item() + lm_weight * lm_bonus
 
-            # append decoded char and its confidence
             string.append(char)
-            char_conf.append(probs[b, t, p].item())
+            char_conf.append(prob)  # one confidence per decoded character
 
-            prev = char
             prev_ctc = p
+            prev_char = char
 
         decoded.append("".join(string))
         confidences.append(torch.tensor(char_conf))
