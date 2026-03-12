@@ -135,32 +135,28 @@ def main():
                 loss = criterion(outputs.permute(1,0,2), targets, input_lengths, target_lengths)
                 val_loss_total += loss.item()
                 if BIGRAM and BEAM_SEARCH:
-                    preds = ctc_beam_bigram_decode(outputs, bigram_lm, decoder, beam_width=10, lm_weight=0.3)
+                    preds= ctc_beam_bigram_decode(outputs, bigram_lm, decoder, beam_width=10, lm_weight=0.3)
                 elif BIGRAM:
-                    preds = ctc_bigram_decode(outputs, bigram_lm)
+                    preds, conf  = ctc_bigram_decode(outputs, bigram_lm)
                 elif BEAM_SEARCH:
                     preds = ctc_beam_decode(outputs, decoder)
                 else:
-                    preds = ctc_greedy_decode(outputs)
+                    preds, conf = ctc_greedy_decode(outputs)
 
-                if CONFIDENCE:
-                    conf = char_confidence(outputs)
-
+                if CONFIDENCE and not BEAM_SEARCH:
                     corrected_preds = []
 
                     for i, p in enumerate(preds):
 
                         p = confidence_correct(p, conf[i])
 
-                        p = spell_correct_sentence(p)
-
                         corrected_preds.append(p)
 
                     all_preds.extend(corrected_preds)
+                    print(len(all_preds[0]), len(conf[0]))
                 else:
                     all_preds.extend(preds)
                 all_labels.extend(labels)
-
                 if WANDB_RECORDING and logged_images is None:
                     logged_images = []
 

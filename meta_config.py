@@ -5,10 +5,10 @@ from uses_hpc import USES_HPC
 WANDB_RECORDING = True
 SAVE_MODEL = True
 SCHEDULAR = True
-LOWERCASE = False
+LOWERCASE = True
 BIGRAM = True
 LSTM_DROPOUT = True
-CONFIDENCE = False
+CONFIDENCE = True
 
 BEAM_SEARCH = False
 CONV_LAYER = False

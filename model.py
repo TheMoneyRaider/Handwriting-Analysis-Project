@@ -89,19 +89,32 @@ def char_confidence(output):
 # CTC DECODING
 # =========================
 def ctc_greedy_decode(output, blank=0):
-    preds = torch.argmax(output, dim=2)
+
+    probs = torch.softmax(output, dim=2)
+    max_probs, preds = torch.max(probs, dim=2)
 
     decoded = []
-    for pred in preds:
+    confidences = []
+
+    for b in range(preds.size(0)):
+
         prev = blank
         string = []
-        for p in pred:
-            p = p.item()
+        char_conf = []
+
+        for t in range(preds.size(1)):
+
+            p = preds[b, t].item()
+
             if p != blank and p != prev:
                 string.append(idx_to_char.get(p, ""))
+                char_conf.append(max_probs[b, t].item())
+
             prev = p
+
         decoded.append("".join(string))
-    return decoded
+        confidences.append(torch.tensor(char_conf))
+    return decoded, confidences
 
 def compute_cer(predictions, ground_truths):
 
@@ -115,20 +128,24 @@ def compute_cer(predictions, ground_truths):
     return total_distance / total_chars if total_chars > 0 else 0
 
 def ctc_bigram_decode(output, bigram_lm, blank=0, lm_weight=0.3):
+    """
+    CTC decoding with a simple bigram LM, returning both decoded text and per-character confidence.
+    """
 
+    probs = torch.softmax(output, dim=2)
     log_probs = output.log_softmax(2)
     preds = torch.argmax(log_probs, dim=2)
 
     decoded = []
+    confidences = []
 
     for b, pred in enumerate(preds):
-
         prev = "<s>"
         prev_ctc = blank
         string = []
+        char_conf = []
 
         for t, p in enumerate(pred):
-
             p = p.item()
 
             if p == blank or p == prev_ctc:
@@ -137,19 +154,24 @@ def ctc_bigram_decode(output, bigram_lm, blank=0, lm_weight=0.3):
 
             char = idx_to_char.get(p, "")
 
+            # LM bonus (optional, does not affect confidence)
             lm_bonus = 0
             if prev in bigram_lm and char in bigram_lm[prev]:
                 lm_bonus = bigram_lm[prev][char]
 
             score = log_probs[b, t, p].item() + lm_weight * lm_bonus
 
+            # append decoded char and its confidence
             string.append(char)
+            char_conf.append(probs[b, t, p].item())
+
             prev = char
             prev_ctc = p
 
         decoded.append("".join(string))
+        confidences.append(torch.tensor(char_conf))
 
-    return decoded
+    return decoded, confidences
 
 def ctc_beam_decode(outputs,decoder):
 

@@ -3,24 +3,27 @@ def confidence_correct(text, conf):
     words = text.split()
 
     corrected = []
-
     idx = 0
 
     for word in words:
 
         length = len(word)
 
+        if idx + length > len(conf):
+            corrected.append(word)
+            continue
+
         word_conf = conf[idx:idx+length]
+        idx += length
 
-        idx += length + 1
-
-        if word_conf.mean().item() < 0.75:
+        if word_conf.mean().item() < 0.6:
             corrected.append(spell_correct_word(word))
         else:
             corrected.append(word)
 
-    return " ".join(corrected)
+        idx += 1  # skip space
 
+    return " ".join(corrected)
 
 
 
@@ -43,16 +46,7 @@ def spell_correct_word(word):
         max_edit_distance=2
     )
 
-    if suggestions:
+    if suggestions and suggestions[0].distance > 0:
         return suggestions[0].term
 
     return word
-
-
-def spell_correct_sentence(text):
-
-    words = text.split()
-
-    corrected = [spell_correct_word(w) for w in words]
-
-    return " ".join(corrected)
