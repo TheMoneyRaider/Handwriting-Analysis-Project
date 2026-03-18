@@ -50,7 +50,7 @@ class CRNN(nn.Module):
         drop = 0.0
         input = 256*8
         if LSTM_DROPOUT:
-            drop = 0.3
+            drop = 0.4
         if CONV_LAYER:
             self.reduce = nn.Conv2d(512,256,1)
         self.rnn = nn.LSTM(
