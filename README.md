@@ -1,6 +1,6 @@
 # Handwriting Recognition — AI 535 Final Project
 
-A CRNN-BiLSTM model for offline handwriting recognition, trained on the IAM line-level dataset. This was our final project for AI 535 (Deep Learning) at [University Name].
+A CRNN-BiLSTM model for offline handwriting recognition, trained on the IAM line-level dataset. This was our final project for AI 535 (Deep Learning) at Oregon State University.
 
 ---
 
